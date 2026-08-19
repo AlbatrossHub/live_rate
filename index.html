@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Gold Rates by Country</title>
+<meta name="description" content="Live gold rate per gram in 31 countries, derived from spot XAU and daily FX rates.">
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#14161a; --muted:#6b7280; --line:#e3e6ea;
+  --accent:#b8860b; --accent-soft:#fdf6e3; --pos:#0a7c42; --neg:#b3261e;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1114; --panel:#171a1f; --ink:#e8eaed; --muted:#9aa3ad; --line:#272c33;
+    --accent:#e0b34d; --accent-soft:#241f12; --pos:#4ade80; --neg:#f87171;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:24px 16px 56px}
+header{margin-bottom:20px}
+h1{font-size:22px; margin:0 0 4px; letter-spacing:-.01em}
+.sub{color:var(--muted); font-size:13px; margin:0}
+
+.spot{
+  display:flex; flex-wrap:wrap; gap:20px 32px; align-items:baseline;
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  padding:16px 18px; margin:18px 0;
+}
+.spot .item{display:flex; flex-direction:column; gap:2px}
+.spot .label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)}
+.spot .value{font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.spot .value.gold{color:var(--accent)}
+.spot .meta{margin-left:auto; text-align:right; font-size:12px; color:var(--muted); line-height:1.6}
+
+.controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
+input[type=search]{
+  flex:1 1 220px; min-width:0; padding:9px 12px; border-radius:9px;
+  border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:14px;
+}
+input[type=search]:focus{outline:2px solid var(--accent); outline-offset:-1px}
+button.ghost{
+  padding:9px 14px; border-radius:9px; border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); font-size:14px; cursor:pointer;
+}
+button.ghost:hover{border-color:var(--accent)}
+
+.tablewrap{background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+th,td{padding:11px 14px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line)}
+th{
+  font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+  font-weight:600; position:sticky; top:0; background:var(--panel); z-index:1;
+}
+th:first-child,td:first-child{text-align:left}
+th:nth-child(2),td:nth-child(2){text-align:left}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--accent-soft)}
+.country{font-weight:500}
+.flag{margin-right:8px}
+.ccy{color:var(--muted); font-size:13px}
+.taxed{color:var(--accent); font-weight:600}
+.none{color:var(--muted)}
+.status{margin-top:14px; font-size:12px; color:var(--muted)}
+.err{
+  background:var(--panel); border:1px solid var(--neg); color:var(--neg);
+  border-radius:10px; padding:12px 14px; margin:12px 0; font-size:14px;
+}
+footer{margin-top:26px; font-size:12px; color:var(--muted); line-height:1.7}
+footer code{background:var(--accent-soft); padding:1px 5px; border-radius:4px; font-size:11px}
+@media (max-width:620px){
+  .spot .meta{margin-left:0; text-align:left; width:100%}
+  th,td{padding:10px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Live Gold Rates</h1>
+    <p class="sub">Gold price per gram across 31 countries, derived from live spot XAU and daily FX.</p>
+  </header>
+
+  <div class="spot">
+    <div class="item">
+      <span class="label">Spot 24K</span>
+      <span class="value gold" id="spotOz">—</span>
+    </div>
+    <div class="item">
+      <span class="label">Per gram (24K)</span>
+      <span class="value" id="spotG">—</span>
+    </div>
+    <div class="item">
+      <span class="label">Per gram (22K)</span>
+      <span class="value" id="spotG22">—</span>
+    </div>
+    <div class="meta">
+      <div id="updated">Loading…</div>
+      <div id="countdown"></div>
+    </div>
+  </div>
+
+  <div id="error" hidden class="err"></div>
+
+  <div class="controls">
+    <input type="search" id="filter" placeholder="Filter by country or currency…" autocomplete="off">
+    <button class="ghost" id="refresh">Refresh now</button>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Country</th>
+          <th>Currency</th>
+          <th>24K / g</th>
+          <th>22K / g</th>
+          <th>Tax</th>
+          <th>24K + Tax</th>
+          <th>22K + Tax</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="status" id="source"></div>
+
+  <footer>
+    <p><strong>How these are calculated:</strong> <code>(spot USD/oz ÷ 31.1035) × FX(USD→local) × purity × (1 + tax%)</code>. 24K = 999 fine, 22K = 91.67%.</p>
+    <p>Spot-derived reference rates only — not dealer quotes. Local retail prices also carry making charges and dealer premiums. Tax/clearance percentages come from <code>countries.json</code>; a dash means none is configured yet.</p>
+  </footer>
+</div>
+
+<script>
+const TROY_OZ_G = 31.1035;
+const PURITY_22K = 22 / 24;
+const REFRESH_MS = 60000;
+const CACHE_KEY = 'liveRate:lastGood';
+
+let countries = [];
+let data = null;
+let tick = null;
+let nextAt = 0;
+
+const $ = id => document.getElementById(id);
+
+function flag(cc){
+  return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+function money(value, currency, forceDigits){
+  const digits = forceDigits !== undefined ? forceDigits : (value >= 1000 ? 0 : 2);
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency', currency,
+      minimumFractionDigits: digits, maximumFractionDigits: digits
+    }).format(value);
+  } catch {
+    return value.toLocaleString('en-US', {minimumFractionDigits: digits, maximumFractionDigits: digits}) + ' ' + currency;
+  }
+}
+
+async function getJSON(url){
+  const res = await fetch(url, {cache: 'no-store'});
+  if(!res.ok) throw new Error(url + ' → HTTP ' + res.status);
+  return res.json();
+}
+
+// Primary: live spot from gold-api.com + daily FX from exchangerate-api.
+async function loadPrimary(){
+  const [gold, fx] = await Promise.all([
+    getJSON('https://api.gold-api.com/price/XAU'),
+    getJSON('https://open.er-api.com/v6/latest/USD')
+  ]);
+  if(!gold || typeof gold.price !== 'number') throw new Error('gold-api: unexpected payload');
+  if(!fx || fx.result !== 'success' || !fx.rates) throw new Error('exchangerate-api: unexpected payload');
+  return {
+    usdPerOz: gold.price,
+    rates: fx.rates,
+    goldTime: gold.updatedAt,
+    fxTime: fx.time_last_update_utc,
+    source: 'api.gold-api.com (live spot) + open.er-api.com (daily FX)'
+  };
+}
+
+// Fallback: one endpoint giving XAU priced in every currency; FX derived as a cross rate.
+async function loadFallback(){
+  const j = await getJSON('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/xau.json');
+  const xau = j && j.xau;
+  if(!xau || typeof xau.usd !== 'number') throw new Error('currency-api: unexpected payload');
+  const usdPerOz = xau.usd;
+  const rates = {};
+  for(const k in xau) rates[k.toUpperCase()] = xau[k] / usdPerOz;
+  return {
+    usdPerOz, rates,
+    goldTime: j.date, fxTime: j.date,
+    source: 'cdn.jsdelivr.net currency-api (fallback — daily)'
+  };
+}
+
+function render(){
+  if(!data) return;
+  const usdPerGram = data.usdPerOz / TROY_OZ_G;
+
+  $('spotOz').textContent = money(data.usdPerOz, 'USD', 2) + ' / oz';
+  $('spotG').textContent  = money(usdPerGram, 'USD');
+  $('spotG22').textContent = money(usdPerGram * PURITY_22K, 'USD');
+  $('updated').textContent = 'Gold: ' + new Date(data.goldTime).toLocaleString() +
+    (data.stale ? ' · showing cached data' : '');
+  $('source').textContent = 'Source: ' + data.source + ' · FX as of ' + data.fxTime;
+
+  const q = $('filter').value.trim().toLowerCase();
+  const rows = [];
+
+  for(const c of countries){
+    if(q && !c.name.toLowerCase().includes(q) && !c.currency.toLowerCase().includes(q)) continue;
+
+    const fx = data.rates[c.currency];
+    if(typeof fx !== 'number'){
+      rows.push(`<tr>
+        <td class="country"><span class="flag">${flag(c.cc)}</span>${c.name}</td>
+        <td class="ccy">${c.currency}</td>
+        <td colspan="5" class="none">rate unavailable</td>
+      </tr>`);
+      continue;
+    }
+
+    const g24 = usdPerGram * fx;
+    const g22 = g24 * PURITY_22K;
+    const hasTax = c.taxPct > 0;
+    const mult = 1 + (c.taxPct / 100);
+
+    rows.push(`<tr>
+      <td class="country"><span class="flag">${flag(c.cc)}</span>${c.name}</td>
+      <td class="ccy">${c.currency}</td>
+      <td>${money(g24, c.currency)}</td>
+      <td>${money(g22, c.currency)}</td>
+      <td class="${hasTax ? '' : 'none'}">${hasTax ? c.taxPct.toFixed(2) + '%' : '—'}</td>
+      <td class="${hasTax ? 'taxed' : 'none'}">${hasTax ? money(g24 * mult, c.currency) : '—'}</td>
+      <td class="${hasTax ? 'taxed' : 'none'}">${hasTax ? money(g22 * mult, c.currency) : '—'}</td>
+    </tr>`);
+  }
+
+  $('rows').innerHTML = rows.length ? rows.join('') :
+    '<tr><td colspan="7" class="none">No countries match that filter.</td></tr>';
+}
+
+function showError(msg){
+  const el = $('error');
+  el.hidden = false;
+  el.textContent = msg;
+}
+
+async function load(){
+  $('error').hidden = true;
+  try{
+    let fresh;
+    try{
+      fresh = await loadPrimary();
+    }catch(primaryErr){
+      console.warn('Primary source failed, trying fallback:', primaryErr);
+      fresh = await loadFallback();
+      showError('Primary price feed unavailable — using fallback source (updated daily).');
+    }
+    data = fresh;
+    try{ localStorage.setItem(CACHE_KEY, JSON.stringify(fresh)); }catch{}
+  }catch(err){
+    console.error(err);
+    let cached = null;
+    try{ cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); }catch{}
+    if(cached){
+      data = Object.assign({}, cached, {stale: true});
+      showError('Live feeds unreachable — showing the last rates this browser loaded.');
+    }else{
+      showError('Could not load gold or currency rates. Check your connection and try Refresh.');
+      return;
+    }
+  }
+  render();
+  nextAt = Date.now() + REFRESH_MS;
+}
+
+function startClock(){
+  clearInterval(tick);
+  tick = setInterval(() => {
+    const left = Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
+    $('countdown').textContent = left ? 'Refreshing in ' + left + 's' : 'Refreshing…';
+    if(Date.now() >= nextAt){ nextAt = Date.now() + REFRESH_MS; load(); }
+  }, 1000);
+}
+
+async function init(){
+  try{
+    const cfg = await getJSON('./countries.json');
+    countries = cfg.countries;
+  }catch(err){
+    showError('Could not load countries.json — the country list is unavailable.');
+    return;
+  }
+  $('filter').addEventListener('input', render);
+  $('refresh').addEventListener('click', () => { nextAt = 0; load(); });
+  await load();
+  startClock();
+}
+
+init();
+</script>
+</body>
+</html>

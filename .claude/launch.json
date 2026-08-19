@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "live-rate",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8912", "--directory", "/opt/projects/live_rate"],
+      "port": 8912
+    }
+  ]
+}
