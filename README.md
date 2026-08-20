@@ -8,10 +8,10 @@ No backend, no build step, no API keys.
 Gold has one global spot price (XAU/USD). Every country's rate is derived:
 
 ```
-rate_per_gram = (spot_USD_per_oz / 31.1035) x FX(USD->local) x purity x (1 + tax%)
+rate_per_gram = (spot_USD_per_oz / 31.1035) x FX(USD->local) x (1 + tax%)
 ```
 
-24K = 999 fine. 22K = 91.67%.
+Rates are quoted for 24K (999 fine).
 
 ### Data sources
 

@@ -95,10 +95,6 @@ footer code{background:var(--accent-soft); padding:1px 5px; border-radius:4px; f
       <span class="label">Per gram (24K)</span>
       <span class="value" id="spotG">—</span>
     </div>
-    <div class="item">
-      <span class="label">Per gram (22K)</span>
-      <span class="value" id="spotG22">—</span>
-    </div>
     <div class="meta">
       <div id="updated">Loading…</div>
       <div id="countdown"></div>
@@ -119,10 +115,8 @@ footer code{background:var(--accent-soft); padding:1px 5px; border-radius:4px; f
           <th>Country</th>
           <th>Currency</th>
           <th>24K / g</th>
-          <th>22K / g</th>
           <th>Tax</th>
           <th>24K + Tax</th>
-          <th>22K + Tax</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
@@ -132,14 +126,13 @@ footer code{background:var(--accent-soft); padding:1px 5px; border-radius:4px; f
   <div class="status" id="source"></div>
 
   <footer>
-    <p><strong>How these are calculated:</strong> <code>(spot USD/oz ÷ 31.1035) × FX(USD→local) × purity × (1 + tax%)</code>. 24K = 999 fine, 22K = 91.67%.</p>
+    <p><strong>How these are calculated:</strong> <code>(spot USD/oz ÷ 31.1035) × FX(USD→local) × (1 + tax%)</code>. Rates are 24K (999 fine).</p>
     <p>Spot-derived reference rates only — not dealer quotes. Local retail prices also carry making charges and dealer premiums. Tax/clearance percentages come from <code>countries.json</code>; a dash means none is configured yet.</p>
   </footer>
 </div>
 
 <script>
 const TROY_OZ_G = 31.1035;
-const PURITY_22K = 22 / 24;
 const REFRESH_MS = 60000;
 const CACHE_KEY = 'liveRate:lastGood';
 
@@ -210,7 +203,6 @@ function render(){
 
   $('spotOz').textContent = money(data.usdPerOz, 'USD', 2) + ' / oz';
   $('spotG').textContent  = money(usdPerGram, 'USD');
-  $('spotG22').textContent = money(usdPerGram * PURITY_22K, 'USD');
   $('updated').textContent = 'Gold: ' + new Date(data.goldTime).toLocaleString() +
     (data.stale ? ' · showing cached data' : '');
   $('source').textContent = 'Source: ' + data.source + ' · FX as of ' + data.fxTime;
@@ -226,13 +218,12 @@ function render(){
       rows.push(`<tr>
         <td class="country"><span class="flag">${flag(c.cc)}</span>${c.name}</td>
         <td class="ccy">${c.currency}</td>
-        <td colspan="5" class="none">rate unavailable</td>
+        <td colspan="3" class="none">rate unavailable</td>
       </tr>`);
       continue;
     }
 
     const g24 = usdPerGram * fx;
-    const g22 = g24 * PURITY_22K;
     const hasTax = c.taxPct > 0;
     const mult = 1 + (c.taxPct / 100);
 
@@ -240,15 +231,13 @@ function render(){
       <td class="country"><span class="flag">${flag(c.cc)}</span>${c.name}</td>
       <td class="ccy">${c.currency}</td>
       <td>${money(g24, c.currency)}</td>
-      <td>${money(g22, c.currency)}</td>
       <td class="${hasTax ? '' : 'none'}">${hasTax ? c.taxPct.toFixed(2) + '%' : '—'}</td>
       <td class="${hasTax ? 'taxed' : 'none'}">${hasTax ? money(g24 * mult, c.currency) : '—'}</td>
-      <td class="${hasTax ? 'taxed' : 'none'}">${hasTax ? money(g22 * mult, c.currency) : '—'}</td>
     </tr>`);
   }
 
   $('rows').innerHTML = rows.length ? rows.join('') :
-    '<tr><td colspan="7" class="none">No countries match that filter.</td></tr>';
+    '<tr><td colspan="5" class="none">No countries match that filter.</td></tr>';
 }
 
 function showError(msg){
